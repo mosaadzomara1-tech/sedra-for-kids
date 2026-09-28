@@ -123,7 +123,7 @@
     const g = document.createElement('div');
     g.id = 'gate'; g.className = 'gate'; g.setAttribute('role', 'dialog'); g.setAttribute('aria-modal', 'true'); g.setAttribute('aria-labelledby', 'gateT');
     g.innerHTML = '<div class="gate-card">' +
-      '<img class="gate-logo" src="icons/icon-512.png?v=sedra-202609201933" alt="سدرة للأطفال" width="512" height="512">' +
+      '<img class="gate-logo" src="icons/icon-512.png?v=sedra-202609280819" alt="سدرة للأطفال" width="512" height="512">' +
       '<h1 id="gateT">ثبّت «سدرة للأطفال»</h1>' +
       '<p class="gate-sub">حروف وأرقام وقرآن وقصص — مجاني، بلا إعلانات، ويعمل بدون إنترنت</p>' +
       '<div class="gate-body"></div>' +

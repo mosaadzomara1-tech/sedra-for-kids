@@ -16,7 +16,7 @@ button{font-family:inherit;color:inherit;cursor:pointer;border:0;background:none
 
 .top{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:10px;padding:10px 16px;
   padding-top:max(10px,env(safe-area-inset-top));background:var(--green);color:#fff;box-shadow:0 2px 0 var(--green-d)}
-.top h1{flex:1;margin:0;font-size:24px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top h1{flex:1;margin:0;font-size:clamp(17px,5.4vw,24px);font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .back{width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.22);font-size:24px;color:#fff}
 .stars{background:#fff;color:var(--ink);border-radius:999px;padding:6px 14px;font-size:20px;font-weight:800;box-shadow:var(--shadow)}
 .stars.bump{animation:bump .5s}
@@ -122,7 +122,7 @@ main{max-width:760px;margin:0 auto;padding:16px;outline:none}
 .lesson{background:#fffbe8;border:2px solid #f3e3a1;border-radius:18px;padding:14px;font-size:24px;text-align:center}
 
 .opts{display:grid;gap:12px;margin-top:14px}
-.opts.four{grid-template-columns:repeat(2,1fr)}
+.opts.four{grid-template-columns:repeat(2,minmax(0,1fr))}
 .opt{background:#fff;border-radius:20px;box-shadow:var(--shadow);border:3px solid var(--line);min-height:76px;font-size:24px;font-weight:800;padding:8px}
 .opts.four .opt{font-size:64px;min-height:120px}
 .opt.ok{border-color:var(--green);background:#e7f8ee}
@@ -200,9 +200,9 @@ input.txt,select.txt{font-family:inherit;font-size:18px;padding:10px 12px;border
 .plan-it.done::after{content:"✅";margin-inline-start:auto}
 
 /* ألعاب المهارات */
-.opts.three{grid-template-columns:repeat(3,1fr)}
-.opts.three .opt{font-size:60px;min-height:110px}
-.opts.two{grid-template-columns:repeat(2,1fr)}
+.opts.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.opts.three .opt{font-size:clamp(40px,14vw,60px);min-height:110px;min-width:0}
+.opts.two{grid-template-columns:repeat(2,minmax(0,1fr))}
 .opts.two .opt{min-height:150px}
 .opts.ltr,.ltr .opt{direction:ltr}
 .opt .count{display:flex;flex-wrap:wrap;justify-content:center;gap:2px;font-size:30px}
@@ -215,8 +215,34 @@ input.txt,select.txt{font-family:inherit;font-size:18px;padding:10px 12px;border
 .dice span{display:grid;place-items:center}
 .seq{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;direction:rtl}
 .seq span{min-width:64px;height:72px;border-radius:16px;background:#fff7e6;border:2px solid #f3dca6;font-size:40px;font-weight:800;display:grid;place-items:center}
-.seq.pat span{background:#fff;border-color:var(--line)}
+/* النمط في سطر واحد (الترتيب هو اللعبة نفسها) — الخانات بتصغر على الشاشة الصغيرة بدل ما تنزل سطر */
+.seq.pat{flex-wrap:nowrap;gap:5px}
+.seq.pat span{background:#fff;border-color:var(--line);flex:1 1 0;min-width:0;max-width:64px;font-size:clamp(22px,7.5vw,40px)}
 .seq .hole{background:#e8f4ff;border:3px dashed var(--blue)}
+/* ركن الأهل: نعمل إيه الأسبوع ده؟ */
+.insights{background:#f3fbf6;border:2px solid #cfeedd;border-radius:16px;padding:10px 12px;margin-top:10px}
+.insights ul{margin:6px 0 0;padding:0;list-style:none;line-height:1.6}
+.insights li{margin:7px 0}
+.insights .letters{font-size:21px;font-weight:800;letter-spacing:3px;white-space:nowrap}
+/* دفعة v4 */
+.clockwrap{display:grid;place-items:center}
+.clockface{width:min(210px,62vw);height:auto}
+.clockface circle{fill:#fff;stroke:var(--line);stroke-width:6}
+.clockface text{font-size:19px;font-weight:800;fill:#2d3a45;text-anchor:middle;dominant-baseline:central}
+.clockface line{stroke-linecap:round}
+.clockface .hh{stroke:#e8564f;stroke-width:9}
+.clockface .mh{stroke:#3a8dde;stroke-width:6}
+.clockface .pin{fill:#2d3a45;stroke:none}
+.opts .opt .cap.dig{font-size:clamp(26px,8.5vw,38px);font-weight:800;letter-spacing:.5px}
+.echo{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:10px}
+.etile{background:#fff;border-radius:24px;border:4px solid var(--line);box-shadow:var(--shadow);min-height:clamp(110px,34vw,150px);font-size:clamp(52px,17vw,76px);transition:transform .15s,background .15s}
+.etile.lit{background:#fff2b3;border-color:#f5c518;transform:scale(1.06)}
+.etile.no{background:#ffe1df;border-color:#e8564f}
+/* تسلسل بالكلمات (متى نفعل؟): صورة واسم، والأربعة في سطر واحد عشان الترتيب يتقري */
+.seq.words{flex-wrap:nowrap;gap:6px;width:100%}
+.seq.words span{flex:1 1 0;min-width:0;height:auto;min-height:84px;padding:6px 2px;font-size:30px;gap:2px;align-content:center}
+/* الكلمة ماتتقسمش في النص (طفل بيتعلّم يقرا) — بتصغر شوية بدل ما تنكسر */
+.seq.words small{font-size:clamp(11px,3.4vw,15px);font-weight:700;line-height:1.25;white-space:nowrap}
 .swatch{display:block;width:100%;aspect-ratio:1.4;border-radius:14px;border:2px solid #ccd;min-height:40px}
 .shp{width:70%;max-width:90px;height:auto}
 .grid.cs{grid-template-columns:repeat(2,1fr)}

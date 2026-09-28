@@ -1,7 +1,7 @@
 /* عامل الخدمة — التطبيق كله يعمل بلا إنترنت بعد أول فتحة (عدا التلاوة غير المحفوظة).
  * VERSION يتغيّر في كل نشر (deploy.py) · AUDIO يتغيّر فقط لما تتغيّر الأصوات (make_precache.py) — فلا يُعاد تنزيل ١٠ م.ب بلا داعٍ. */
-const VERSION = 'sedra-202609201933';
-const AUDIO = 'sedra-audio-d8451349dc';
+const VERSION = 'sedra-202609280819';
+const AUDIO = 'sedra-audio-bed48c65a5';
 const SHELL = 'sedra-shell-' + VERSION;
 const QURAN = 'sedra-quran';
 

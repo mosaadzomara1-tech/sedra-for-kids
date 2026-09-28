@@ -137,15 +137,51 @@
     return { shown: seq.slice(0, 5), answer, options: shuffle([...used, ...extra], rnd) };
   }
   /* الرقم الناقص: ٤ أرقام متتالية وواحد مخفي، والخيارات قريبة منه (تُدرّب التسلسل لا التخمين) */
-  function makeSequence(rnd, max) {
+  // min = أصغر قيمة مسموحة في الخيارات: ٠ للأرقام، ١ للقوائم (أيام/روتين) اللي مالهاش عنصر صفر
+  function makeSequence(rnd, max, min) {
     max = max || 20;
+    min = min == null ? 0 : min;
     const start = 1 + Math.floor(rnd() * (max - 3));
     const items = [start, start + 1, start + 2, start + 3];
     const hole = Math.floor(rnd() * 4);
     const answer = items[hole];
-    const near = shuffle([answer - 2, answer - 1, answer + 1, answer + 2].filter((x) => x >= 0 && x <= max), rnd).slice(0, 3);
+    // ٣ خيارات قريبة دايماً: الأقرب الأول (±١ ثم ±٢ …) جوّه الحدود — عند الطرف بنكمّل من الناحية التانية
+    const cand = [1, -1, 2, -2, 3, -3, 4, -4, 5, -5].map((d) => answer + d).filter((x) => x >= min && x <= max);
+    const near = shuffle(cand.slice(0, 4), rnd).slice(0, 3);
     return { items: items.map((x, i) => (i === hole ? null : x)), answer, options: shuffle([answer, ...near], rnd) };
   }
+  /* ───── دفعة v4 ───── */
+  /* الساعة: زاويتا العقربين بالدرجات من ١٢ باتجاه عقارب الساعة */
+  const clockAngles = (h, m) => ({ hour: (h % 12) * 30 + m / 2, minute: m * 6 });
+  /* سؤال الساعة: ساعة كاملة (أو ونص لو half) + خياران مضلِّلان من الأخطاء الشائعة:
+     نفس الساعة بالدقايق التانية، والساعة اللي بعدها/قبلها (العقرب الصغير بين رقمين في «ونص») */
+  function clockQuestion(rnd, half) {
+    const h = 1 + Math.floor(rnd() * 12), m = half && rnd() < 0.5 ? 30 : 0;
+    const wrap = (x) => ((x + 11) % 12) + 1, same = (a, b) => a.h === b.h && a.m === b.m;
+    const cands = [{ h: wrap(h + 1), m }, { h: wrap(h - 1), m }];
+    if (half) cands.unshift({ h, m: m ? 0 : 30 });
+    const opts = [{ h, m }];
+    for (const c of shuffle(cands, rnd)) if (opts.length < 3 && !opts.some((o) => same(o, c))) opts.push(c);
+    return { h, m, options: shuffle(opts, rnd) };
+  }
+  /* أين يعيش؟: حيوان + بيئته + بيئتين تانيين مختلفين */
+  function habitatQuestion(rnd, pairs, nHabitats, lastKey) {
+    let k; do { k = Math.floor(rnd() * pairs.length); } while (pairs.length > 1 && k === lastKey);
+    const [animal, home] = pairs[k];
+    const others = shuffle([...Array(nHabitats).keys()].filter((x) => x !== home), rnd).slice(0, 2);
+    return { key: k, animal, home, options: shuffle([home, ...others], rnd) };
+  }
+  /* كرّر الترتيب: أول مرة بطاقتين، وبعدها بطاقة زيادة كل مرة — من غير نفس البطاقة ٣ مرات ورا بعض */
+  function echoExtend(seq, n, rnd) {
+    const out = seq.slice();
+    do {
+      let k; do { k = Math.floor(rnd() * n); } while (out.length >= 2 && out[out.length - 1] === k && out[out.length - 2] === k);
+      out.push(k);
+    } while (out.length < 2);
+    return out;
+  }
+  const echoStars = (best) => (best >= 5 ? 3 : best >= 3 ? 2 : 1);   // نجمة على الأقل دايماً
+
   /* النرد: مواضع النقاط في شبكة ٣×٣ — لإدراك الكمية بلا عدّ */
   const DICE = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
   const diceLayout = (n) => DICE[n] || [];
@@ -168,23 +204,16 @@
     return shuffle(out, rnd);
   }
 
-  /* القافية: يسمع كلمة ويختار التي تُشبه آخرها — والمشتّتات من أزواج أخرى فلا تُقفّي معها */
-  function makeRhyme(rnd, pairCount, n) {
+  /* سؤال الزوج: يُعرض طرف s من الزوج p، والجواب طرفه الآخر، والمشتّتات أطراف من أزواج تانية.
+     نفس المنطق للعبتين: القافية (الكلمة ← اللي تشبه آخرها) والأضداد (الكلمة ← عكسها) */
+  function pairQuestion(rnd, pairCount, n) {
     n = n || 3;
     const p = Math.floor(rnd() * pairCount), s = Math.floor(rnd() * 2);
     const others = shuffle(range(pairCount).filter((i) => i !== p), rnd).slice(0, n - 1);
     const opts = [{ p, s: 1 - s, correct: true }, ...others.map((i) => ({ p: i, s: Math.floor(rnd() * 2), correct: false }))];
     return { p, s, options: shuffle(opts, rnd) };
   }
-
-  /* الأضداد: الطرف المعروض من الزوج، والجواب طرفه الآخر */
-  function makeOpposite(rnd, pairCount, n) {
-    n = n || 3;
-    const p = Math.floor(rnd() * pairCount), s = Math.floor(rnd() * 2);
-    const others = shuffle(range(pairCount).filter((i) => i !== p), rnd).slice(0, n - 1);
-    const opts = [{ p, s: 1 - s, correct: true }, ...others.map((i) => ({ p: i, s: Math.floor(rnd() * 2), correct: false }))];
-    return { p, s, options: shuffle(opts, rnd) };
-  }
+  const makeRhyme = pairQuestion, makeOpposite = pairQuestion;
 
   /* التصنيف: تُنادى مجموعة ويُختار فرد منها بين أفراد مجموعات أخرى */
   function makeSort(rnd, sizes, n) {
@@ -205,13 +234,15 @@
     return { big, options: scales.map((z) => ({ z, correct: z === want })) };
   }
 
-  /* الظل: صورة معتمة وأربع صور — إدراك بصري للشكل الخارجي */
-  function makeShadow(rnd, poolSize, n) {
-    n = n || 4;
+  /* واحد من n: n عناصر مختلفة من المخزن وواحد منها هو المطلوب.
+     للظل (صورة معتمة ← صاحبها) والمفاهيم المكانية (جهة ← مشهدها) */
+  function pickOne(rnd, poolSize, n) {
+    n = Math.min(n || 4, poolSize);
     const picked = shuffle(range(poolSize), rnd).slice(0, n);
     const t = picked[Math.floor(rnd() * picked.length)];
     return { t, options: picked.map((i) => ({ i, correct: i === t })) };
   }
+  const makeShadow = pickOne, makeSpatial = pickOne;
 
   /* الجمع والطرح ضمن ١٠ — بالصور دائماً، فالطفل يعدّ ما يراه قبل أن يحفظ */
   function makeArith(rnd, sub, max) {
@@ -223,17 +254,15 @@
     return { a, b, sub: !!sub, answer, options: nearOptions(answer, 0, max, 4, rnd) };
   }
 
-  /* المفاهيم المكانية: تُنادى جهة وتُعرض أربعة مشاهد */
-  function makeSpatial(rnd, poolSize, n) {
-    n = Math.min(n || 4, poolSize);
-    const picked = shuffle(range(poolSize), rnd).slice(0, n);
-    const t = picked[Math.floor(rnd() * picked.length)];
-    return { t, options: picked.map((i) => ({ i, correct: i === t })) };
-  }
-
   /* شكل الحرف: يُعرض الحرف في أول الكلمة أو وسطها أو آخرها ويُسمّى — مهارة عربية خالصة */
   const FORMS = ['start', 'middle', 'end'];
   const pickForm = (rnd) => FORMS[Math.floor(rnd() * FORMS.length)];
+
+  /* روابط العدد ١٠: يظهر a (١–٩) على الإطار العشري، والسؤال كم نحتاج لنكمّل عشرة */
+  function bondQuestion(rnd) {
+    const a = 1 + Math.floor(rnd() * 9), need = 10 - a;
+    return { a, need, options: nearOptions(need, 0, 10, 4, rnd) };
+  }
 
   /* ───── رحلة اليوم — التعلّم التكيّفي ─────
    * لكل طفل كل يوم: أضعف حرف عربي · أضعف حرف إنجليزي · أضعف رقم · أول سورة لم تُحفظ · أول قصة لم تُسمع
@@ -276,10 +305,33 @@
     };
   }
 
+  /* ركن الأهل: «نعمل إيه الأسبوع ده؟» — من تقدّم الطفل على الجهاز بس.
+     strong: ألعاب أخد فيها ٣ نجوم (الأكتر لعباً) · weakGames: لعبها وأحسن نتيجة نجمة
+     weakLetters: حروف غلط فيها آخر مرة (صندوقها رجع صفر) · focus: المجال اللي محتاج اهتمام
+     (مجال ماجرّبهوش خالص الأول، وبعدين الأقل في متوسط النجوم) · tryNext: لعبة منه لسه مالعبهاش */
+  function parentInsights(p, gameAreas) {
+    const games = (p && p.games) || {};
+    const played = Object.entries(games).filter(([, r]) => r && r.plays > 0);
+    const byPlays = (a, b) => b[1].plays - a[1].plays || (a[0] < b[0] ? -1 : 1);
+    const strong = played.filter(([, r]) => r.best >= 3).sort(byPlays).slice(0, 3).map(([id]) => id);
+    const weakGames = played.filter(([, r]) => r.best <= 1).sort(byPlays).slice(0, 3).map(([id]) => id);
+    const weakLetters = Object.entries((p && p.boxes_ar) || {}).filter(([, b]) => b === 0)
+      .map(([k]) => +k).sort((a, b) => a - b).slice(0, 5);
+    let focus = null, best = Infinity;
+    for (const [area, ids] of Object.entries(gameAreas || {})) {
+      const recs = ids.map((id) => games[id]).filter((r) => r && r.plays > 0);
+      const score = recs.length ? recs.reduce((t, r) => t + r.best, 0) / recs.length : -1;   // ماجرّبهوش = الأولوية
+      if (score < best) { best = score; focus = area; }
+    }
+    const tryNext = focus ? ((gameAreas[focus] || []).find((id) => !(games[id] && games[id].plays > 0)) || null) : null;
+    return { strong, weakGames, weakLetters, focus, tryNext, empty: !played.length && !weakLetters.length };
+  }
+
   const api = { toArabicDigits, rng, hashStr, shuffle, pickOptions, familyOptions, updateBox, nextTarget, mastered, roundStars,
     stickersUnlocked, STAR_PER_STICKER, gateQuestion, gateCheck, dateKey, addUsage, remainingSeconds, dilate, traceScore,
     surahQueue, ayahUrl, makePattern, makeSequence, diceLayout, memoryDeck, memoryStars, dailyPlan, progressSummary, MAX_BOX,
-    nearOptions, makeRhyme, makeOpposite, makeSort, makeSize, makeShadow, makeArith, makeSpatial, pickForm, FORMS };
+    nearOptions, makeRhyme, makeOpposite, makeSort, makeSize, makeShadow, makeArith, makeSpatial, pickForm, FORMS, bondQuestion,
+    clockAngles, clockQuestion, habitatQuestion, echoExtend, echoStars, parentInsights };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.SK = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -37,7 +37,8 @@
   function updBox(store, key, ok) { const p = P(); p[store] = SK.updateBox(p[store], key, ok); save(); }
 
   /* ───────────── الصوت ───────────── */
-  const A = (p) => (/^https?:/.test(p) ? p : 'audio/' + p + '.mp3');
+  // الصوت المكرر (نفس الكلمة في أكتر من لعبة) متسجّل مرة واحدة — audio_alias بيحوّل الاسم للأصل
+  const A = (p) => (/^https?:/.test(p) ? p : 'audio/' + ((C && C.audio_alias && C.audio_alias[p]) || p) + '.mp3');
   const player = new Audio();
   const QA = new Audio(); // التلاوة
   let seq = null, stopCurrent = null;
@@ -121,6 +122,14 @@
     oppo: { area: 'world', emoji: '↔️', title: 'ما عكسه؟', skill: 'الأضداد والمفاهيم' },
     space: { area: 'world', emoji: '📦', title: 'أين الكرة؟', skill: 'فوق وتحت وداخل ويمين ويسار' },
     emo: { area: 'world', emoji: '😊', title: 'بماذا يشعر؟', skill: 'فهم المشاعر والتعبير عنها' },
+    read: { area: 'literacy', emoji: '📗', title: 'اقرأ الكلمة', skill: 'قراءة كلمة مشكولة واختيار صورتها' },
+    sight: { area: 'literacy', emoji: '👀', title: 'Tricky words', skill: 'كلمات Jolly Phonics لا تُتهجّى' },
+    bond: { area: 'math', emoji: '🔟', title: 'أكمل العشرة', skill: 'روابط العدد ١٠ على الإطار العشري' },
+    trace: { area: 'thinking', emoji: '✍️', title: 'خطوط ما قبل الكتابة', skill: 'المهارات الحركية الدقيقة' },
+    day: { area: 'world', emoji: '🗓️', title: 'متى نفعل؟', skill: 'تسلسل اليوم وأيام الأسبوع' },
+    echo: { area: 'thinking', emoji: '🧠', title: 'كرّر الترتيب', skill: 'الذاكرة العاملة والتركيز' },
+    clock: { area: 'math', emoji: '🕐', title: 'الساعة كام؟', skill: 'قراءة الساعة: الساعات ثم النصف' },
+    habitat: { area: 'world', emoji: '🏡', title: 'أين يعيش؟', skill: 'الحيوانات وبيئاتها' },
   };
   const AREAS = { literacy: '📖 القراءة', math: '🔢 الرياضيات', thinking: '🧠 التفكير', world: '🌍 أنا وعالمي' };
   const gameAreas = () => { const o = {}; for (const [id, g] of Object.entries(GAMES)) (o[g.area] = o[g.area] || []).push(id); return o; };
@@ -226,7 +235,7 @@
         <button class="toggle ${shape ? 'on' : ''}" data-order="shape">المتشابهة معاً</button></div>
       <div class="grid">${arOrder().map((i) => { const L = C.ar_letters[i]; return `<button class="cell ${(P().boxes_ar[i] || 0) >= 3 ? 'done' : ''}" data-go="ar-l/${i}"><span class="l">${L.letter}</span><span class="e">${L.emoji}</span></button>`; }).join('')}</div>
       <div class="row-title">العب وتعلّم</div>
-      <div class="list">${['ar', 'fam', 'syl', 'pic', 'build', 'memory'].map(gameItem).join('')}</div>`;
+      <div class="list">${['ar', 'fam', 'syl', 'pic', 'build', 'read', 'memory'].map(gameItem).join('')}</div>`;
     $$('[data-order]', view).forEach((b) => (b.onclick = () => { S.settings.order = b.dataset.order; save(); render(); }));
   };
   function gameItem(id) {
@@ -264,7 +273,7 @@
         <button class="toggle ${ph ? 'on' : ''}" data-eo="phonics">s a t p i n — Phonics</button></div>
       <div class="grid en">${enOrder().map((i) => { const L = C.en_letters[i]; return `<button class="cell ${(P().boxes_en[i] || 0) >= 3 ? 'done' : ''}" data-go="en-l/${i}"><span class="l">${L.letter}${L.lower}</span><span class="e">${L.emoji}</span></button>`; }).join('')}</div>
       <div class="row-title">Play & learn</div>
-      <div class="list">${['en', 'spell'].map(gameItem).join('')}</div>`;
+      <div class="list">${['en', 'spell', 'sight'].map(gameItem).join('')}</div>`;
     $$('[data-eo]', view).forEach((b) => (b.onclick = () => { S.settings.enOrder = b.dataset.eo; save(); render(); }));
   };
   routes['en-l'] = (i) => {
@@ -292,7 +301,7 @@
     view.innerHTML = `
       <div class="grid">${C.numbers.map((N) => `<button class="cell ${(P().boxes_num[N.n] || 0) >= 3 ? 'done' : ''}" data-go="num-l/${N.n}"><span class="l">${D(N.n)}</span><span class="e">${N.n}</span></button>`).join('')}</div>
       <div class="row-title">العب وتعلّم</div>
-      <div class="list">${['num', 'flash', 'more', 'seq'].map(gameItem).join('')}</div>`;
+      <div class="list">${['num', 'flash', 'more', 'seq', 'bond'].map(gameItem).join('')}</div>`;
   };
   function tenFrame(n, emoji, clickable) {
     const frames = Math.max(1, Math.ceil(n / 10));
@@ -339,29 +348,17 @@
     markPlan('num', n);
   };
 
-  /* ───────────── الكتابة بالإصبع ───────────── */
-  routes.trace = (kind, i) => {
-    i = +i || 0;
-    const ch = kind === 'ar' ? C.ar_letters[i % 28].letter : kind === 'en' ? C.en_letters[i % 26].letter : D(Math.min(9, i));
-    setTitle('اكتب ' + ch);
-    view.innerHTML = `
-      <p class="center note">مرّر إصبعك فوق الخط المنقّط 👆</p>
-      <div class="trace-wrap"><canvas id="trBg"></canvas><canvas id="trInk"></canvas></div>
-      <div class="result" id="trRes"></div>
-      <div class="nav"><button class="btn ghost" id="trClear">🔄 من جديد</button><button class="btn" id="trDone">✅ خلصت</button></div>`;
+  /* ───────────── لوحة الكتابة بالإصبع — مشتركة للحروف والأرقام وخطوط ما قبل الكتابة ───────────── */
+  // shape(ctx, W, mode): mode «guide» = الدليل المنقّط، «solid» = الشكل المليان اللي الكتابة بتتقيّم عليه.
+  // «خلصت» ← التغطية والدقة (SK.traceScore) ← النجوم في traced[key] (الزيادة بس بتتضاف) ← onStars(stars).
+  // بترجّع دالة تعيد رسم الدليل (الحروف بتستعملها لما الخط يتحمّل).
+  function tracePad(shape, key, onStars) {
     const bg = $('#trBg'), ink = $('#trInk');
     const size = bg.getBoundingClientRect().width, dpr = Math.min(2, window.devicePixelRatio || 1);
     [bg, ink].forEach((c) => { c.width = c.height = Math.round(size * dpr); });
     const W = bg.width, g = bg.getContext('2d'), x = ink.getContext('2d');
-    const font = `800 ${Math.round(W * 0.62)}px "Baloo Bhaijaan 2", sans-serif`;
-    const drawText = (ctx, fill, stroke) => {
-      ctx.clearRect(0, 0, W, W); ctx.font = font; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.direction = 'rtl';
-      if (fill) { ctx.fillStyle = fill; ctx.fillText(ch, W / 2, W * 0.56); }
-      if (stroke) { ctx.setLineDash([W / 50, W / 45]); ctx.lineWidth = W / 110; ctx.strokeStyle = stroke; ctx.strokeText(ch, W / 2, W * 0.56); ctx.setLineDash([]); }
-    };
-    const guide = () => drawText(g, '#e6f2ea', '#86bb9b');
+    const guide = () => { g.clearRect(0, 0, W, W); shape(g, W, 'guide'); };
     guide();
-    if (document.fonts) document.fonts.load(font).then(guide).catch(() => {});
     x.lineCap = 'round'; x.lineJoin = 'round'; x.strokeStyle = x.fillStyle = '#2bb673'; x.lineWidth = W * 0.075;
     let drawing = false, last = null;
     const pos = (e) => { const r = ink.getBoundingClientRect(); return [((e.clientX - r.left) * W) / r.width, ((e.clientY - r.top) * W) / r.height]; };
@@ -378,18 +375,41 @@
     };
     $('#trDone').onclick = () => {
       const N = 64, solid = document.createElement('canvas'); solid.width = solid.height = W;
-      drawText(solid.getContext('2d'), '#000', null);
-      const mask = grid(solid, N), inkG = grid(ink, N);
-      const s = SK.traceScore(mask, SK.dilate(inkG, N, 2), SK.dilate(mask, N, 4));
-      const key = kind + i, p = P(), prev = p.traced[key] || 0;
-      if (s.stars) {
-        $('#trRes').textContent = '⭐'.repeat(s.stars);
-        play(praise());
-        p.traced[key] = Math.max(prev, s.stars); save();
-        addStars(s.stars > prev ? s.stars - prev : 1);
-        if (s.stars >= 2 && kind !== 'num') updBox(kind === 'ar' ? 'boxes_ar' : 'boxes_en', i, true);
-      } else { $('#trRes').textContent = '🙂'; play('ui/again'); }
+      shape(solid.getContext('2d'), W, 'solid');
+      const mask = grid(solid, N), s = SK.traceScore(mask, SK.dilate(grid(ink, N), N, 2), SK.dilate(mask, N, 4));
+      if (!s.stars) { $('#trRes').textContent = '🙂'; play('ui/again'); return; }
+      const p = P(), prev = p.traced[key] || 0;
+      $('#trRes').textContent = '⭐'.repeat(s.stars);
+      play(praise());
+      p.traced[key] = Math.max(prev, s.stars); save();
+      addStars(s.stars > prev ? s.stars - prev : 1);
+      if (onStars) onStars(s.stars);
     };
+    return guide;
+  }
+
+  /* ───────────── الكتابة بالإصبع ───────────── */
+  routes.trace = (kind, i) => {
+    i = +i || 0;
+    const ch = kind === 'ar' ? C.ar_letters[i % 28].letter : kind === 'en' ? C.en_letters[i % 26].letter : D(Math.min(9, i));
+    setTitle('اكتب ' + ch);
+    view.innerHTML = `
+      <p class="center note">مرّر إصبعك فوق الخط المنقّط 👆</p>
+      <div class="trace-wrap"><canvas id="trBg"></canvas><canvas id="trInk"></canvas></div>
+      <div class="result" id="trRes"></div>
+      <div class="nav"><button class="btn ghost" id="trClear">🔄 من جديد</button><button class="btn" id="trDone">✅ خلصت</button></div>`;
+    // الحرف نفسه: منقّط للدليل، ومليان للتقييم
+    const font = (W) => `800 ${Math.round(W * 0.62)}px "Baloo Bhaijaan 2", sans-serif`;
+    const letter = (ctx, W, mode) => {
+      ctx.font = font(W); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.direction = 'rtl';
+      if (mode === 'solid') { ctx.fillStyle = '#000'; ctx.fillText(ch, W / 2, W * 0.56); return; }
+      ctx.fillStyle = '#e6f2ea'; ctx.fillText(ch, W / 2, W * 0.56);
+      ctx.setLineDash([W / 50, W / 45]); ctx.lineWidth = W / 110; ctx.strokeStyle = '#86bb9b'; ctx.strokeText(ch, W / 2, W * 0.56); ctx.setLineDash([]);
+    };
+    const redraw = tracePad(letter, kind + i, (stars) => {
+      if (stars >= 2 && kind !== 'num') updBox(kind === 'ar' ? 'boxes_ar' : 'boxes_en', i, true);
+    });
+    if (document.fonts) document.fonts.load(font(100)).then(redraw).catch(() => {});   // الخط بيتحمّل ← نعيد رسم الدليل
     play('ui/trace');
   };
 
@@ -613,7 +633,7 @@
       <p class="note center tip" id="emoTip">اضغط على الوجه لتعرف ماذا تفعل حين تشعر به 💛</p>
       ${C.world.map((g) => `<div class="row-title">${g.icon} ${esc(g.title)}</div>
         <div class="grid cs">${g.items.map((it, k) => `<button class="cell" data-say="wld/${g.id}_${k}|wld/${g.id}_${k}e"><span class="bigc">${it[0]}</span><span class="e">${esc(it[1])}</span><span class="e" dir="ltr">${esc(it[2])}</span></button>`).join('')}</div>`).join('')}
-      <div class="row-title">العب</div><div class="list">${['emo', 'oppo', 'space', 'sort', 'shadow'].map(gameItem).join('')}</div>`;
+      <div class="row-title">العب</div><div class="list">${['emo', 'oppo', 'space', 'sort', 'shadow', 'day'].map(gameItem).join('')}</div>`;
     $$('[data-emo]', view).forEach((b) => (b.onclick = () => {
       const e = C.emotions.find((x) => x.id === b.dataset.emo);
       $$('[data-emo]', view).forEach((o) => o.classList.toggle('cur', o === b));
@@ -630,6 +650,17 @@
   };
   const letterBtn = (i) => C.ar_letters[i].letter;
   const FORM_AR = { start: 'في أوّل الكلمة', middle: 'في وسط الكلمة', end: 'في آخر الكلمة' };
+  // ساعة بعقارب (SVG داخلي — بلا صور من برّه): الأرقام بالعربي، والعقرب الصغير بين رقمين في «ونص»
+  const clockFace = (h, m) => {
+    const a = SK.clockAngles(h, m), num = (k) => {
+      const t = (k * 30 - 90) * Math.PI / 180;
+      return `<text x="${(100 + 74 * Math.cos(t)).toFixed(1)}" y="${(100 + 74 * Math.sin(t)).toFixed(1)}">${D(k)}</text>`;
+    };
+    const hand = (deg, len, cls) => `<line class="${cls}" x1="100" y1="100" x2="100" y2="${100 - len}" transform="rotate(${deg} 100 100)"/>`;
+    return `<svg class="clockface" viewBox="0 0 200 200" role="img" aria-label="ساعة"><circle cx="100" cy="100" r="94"/>
+      ${[...Array(12).keys()].map((k) => num(k + 1)).join('')}${hand(a.minute, 70, 'mh')}${hand(a.hour, 44, 'hh')}<circle class="pin" cx="100" cy="100" r="6"/></svg>`;
+  };
+  const clockLabel = (h, m) => `<span class="cap dig" dir="ltr">${D(h)}:${m ? D(30) : D(0) + D(0)}</span>`;
   const wordOpt = (emo, w) => `<span class="big-emo">${emo}</span><span class="cap">${esc(w)}</span>`;
   const oppSide = (p, s) => (s ? { w: C.opposites[p].o, e: C.opposites[p].oe, a: `opp/${p}b` }
     : { w: C.opposites[p].w, e: C.opposites[p].e, a: `opp/${p}a` });
@@ -774,17 +805,75 @@
       return { key: t, cls: 'four', prompt: '<div class="pic">❓</div>', audio: ['ui/how_feel', 'emo/' + C.emotions[t].id],
         options: SK.pickOptions(t, n, 4, rnd).map((i) => ({ html: wordOpt(C.emotions[i].emoji, C.emotions[i].ar), correct: i === t })) };
     },
+    // اقرأ الكلمة: نصّها يُعرض لا يُسمع — الطفل يقرأها بنفسه ثم يختار صورتها
+    read(last) {
+      const n = C.read_words.length;
+      let t; do { t = Math.floor(rnd() * n); } while (t === last && n > 1);
+      return { key: t, cls: 'four', prompt: `<div class="qword" style="font-size:44px">${esc(C.read_words[t].word)}</div>`,
+        audio: ['ui/read_word'], after: 'readw/' + t,
+        options: SK.pickOptions(t, n, 4, rnd).map((i) => ({ html: `<span class="big-emo">${C.read_words[i].emoji}</span>`, correct: i === t })) };
+    },
+    // Tricky words: الصوت ينطق الكلمة والطفل يختارها بين ثلاث — لا تُتهجّى صوتياً
+    sight(last) {
+      const n = C.en_tricky.length;
+      let t; do { t = Math.floor(rnd() * n); } while (t === last && n > 1);
+      return { key: t, cls: 'three ltr', prompt: '<div class="pic">👀</div>', audio: ['ui/sight_en', 'tricky/' + t],
+        options: SK.pickOptions(t, n, 3, rnd).map((i) => ({ html: `<span class="cap" dir="ltr">${esc(C.en_tricky[i])}</span>`, correct: i === t })) };
+    },
+    // أكمل العشرة: يظهر عدد على الإطار العشري والسؤال كم ينقص ليكتمل عشرة
+    bond(last) {
+      let q; do { q = SK.bondQuestion(rnd); } while (q.a === last);
+      return { key: q.a, cls: 'four', prompt: `<div class="frames">${tenFrame(q.a, C.count_emoji[0], false)}</div>`,
+        audio: ['ui/bond'], after: 'num/ar' + q.need,
+        options: q.options.map((x) => ({ html: D(x), correct: x === q.need })) };
+    },
+    // الساعة كام؟ الساعات الكاملة، والنصف بعد ما الطفل ياخد نجمتين
+    clock(last) {
+      const rec = P().games.clock, half = !!(rec && rec.best >= 2);
+      let q; do { q = SK.clockQuestion(rnd, half); } while (q.h * 100 + q.m === last);
+      return { key: q.h * 100 + q.m, cls: 'three', prompt: `<div class="clockwrap">${clockFace(q.h, q.m)}</div>`,
+        audio: ['ui/clock'], after: `clk/${q.h}${q.m ? '_30' : ''}`,
+        options: q.options.map((o) => ({ html: clockLabel(o.h, o.m), correct: o.h === q.h && o.m === q.m })) };
+    },
+    // أين يعيش؟ الحيوان بصوت اسمه، والطفل يختار بيئته من ٣
+    habitat(last) {
+      const A = C.world.find((g) => g.id === 'animals').items;
+      const q = SK.habitatQuestion(rnd, C.animal_homes, C.habitats.length, last);
+      return { key: q.key, cls: 'three', prompt: `<div class="pic">${A[q.animal][0]}</div>`,
+        audio: ['ui/habitat', 'wld/animals_' + q.animal], after: 'hab/' + q.home,
+        options: q.options.map((k) => ({ html: wordOpt(C.habitats[k][0], C.habitats[k][1]), correct: k === q.home })) };
+    },
+    // متى نفعل؟ تسلسل اليوم أو أيام الأسبوع (تُعاد من "أنا وعالمي") — فتحة واحدة وخيارات قريبة كالرقم الناقص
+    day(last) {
+      const useWeek = rnd() < 0.5;
+      const seq = useWeek ? C.world.find((g) => g.id === 'days').items : C.day_routine;
+      const s = SK.makeSequence(rnd, seq.length, 1);   // القايمة بتبدأ من ١ — مفيش عنصر صفر
+      const key = (useWeek ? 'w' : 'd') + s.answer;
+      if (key === last) return MAKE.day(null);
+      // الصورة + الكلمة: أيام الأسبوع صورتها رقم بس، فمن غير الاسم الطفل مايعرفش الترتيب
+      const cell = (v) => (v == null ? '<span class="hole">❓</span>'
+        : `<span><b>${seq[v - 1][0]}</b><small>${esc(seq[v - 1][1])}</small></span>`);
+      return { key, cls: 'four', prompt: `<div class="seq words">${s.items.map(cell).join('')}</div>`,
+        audio: ['ui/order_gap'], after: useWeek ? 'wld/days_' + (s.answer - 1) : 'dayr/' + (s.answer - 1),
+        options: s.options.map((v) => ({ html: wordOpt(seq[v - 1][0], seq[v - 1][1]), correct: v === s.answer })) };
+    },
   };
 
-  function finishRound(id, correct) {
-    const stars = SK.roundStars(correct, ROUND), p = P();
-    const rec = p.games[id] || { plays: 0, best: 0 };
+  // شاشة نهاية أي لعبة — مكان واحد: تسجيل أحسن نتيجة، والنجوم، و«رحلة اليوم»، والشاشة نفسها.
+  // addStars=false للعبة اللي بتدّي نجومها أول بأول (الخطوط).
+  function gameDone(id, stars, note, { perfect = false, addStars: give = true } = {}) {
+    const p = P(), rec = p.games[id] || { plays: 0, best: 0 };
     p.games[id] = { plays: rec.plays + 1, best: Math.max(rec.best, stars) }; save();
-    addStars(stars); markPlan('game', id);
-    view.innerHTML = `<div class="card center"><div class="story-emo">🎉</div><h2>${correct === ROUND ? 'ممتاز!' : 'أحسنت!'}</h2>
-      <div class="result">${'⭐'.repeat(stars)}</div><p class="note">${D(correct)} من ${D(ROUND)} من أول مرة</p></div>
+    if (give) addStars(stars);
+    markPlan('game', id);
+    view.innerHTML = `<div class="card center"><div class="story-emo">🎉</div><h2>${perfect ? 'ممتاز!' : 'أحسنت!'}</h2>
+      <div class="result">${'⭐'.repeat(stars)}</div><p class="note">${note}</p></div>
       <div class="nav"><button class="btn" data-go="game/${id}">🔄 العب مرة أخرى</button><button class="btn ghost" data-go="games">🎮 ألعاب أخرى</button></div>`;
     play(praise());
+  }
+
+  function finishRound(id, correct) {
+    gameDone(id, SK.roundStars(correct, ROUND), `${D(correct)} من ${D(ROUND)} من أول مرة`, { perfect: correct === ROUND });
   }
 
   routes.game = (id) => {
@@ -793,6 +882,8 @@
     setTitle(G.title);
     if (id === 'memory') return memoryGame();
     if (id === 'build' || id === 'spell') return buildGame(id === 'build' ? 'ar' : 'en');
+    if (id === 'trace') return traceLinesGame();
+    if (id === 'echo') return echoGame();
     let q = 0, correct = 0, cur = null, last = null, firstTry = true, busy = false, t = null;
     stopCurrent = () => { clearTimeout(t); if (cur && cur.t) clearTimeout(cur.t); };
     function nextQ() {
@@ -845,14 +936,49 @@
         play('ar/' + c1.i, matched === pairs ? () => memoryDone() : null);
       } else { lock = true; setTimeout(() => { b1.classList.remove('flip'); b2.classList.remove('flip'); lock = false; }, 1000); }
     }));
-    function memoryDone() {
-      const stars = SK.memoryStars(moves, pairs), p = P(), r = p.games.memory || { plays: 0, best: 0 };
-      p.games.memory = { plays: r.plays + 1, best: Math.max(r.best, stars) }; save();
-      addStars(stars); markPlan('game', 'memory');
-      view.innerHTML = `<div class="card center"><div class="story-emo">🎉</div><h2>أحسنت!</h2><div class="result">${'⭐'.repeat(stars)}</div><p class="note">${D(moves)} محاولة</p></div>
-        <div class="nav"><button class="btn" data-go="game/memory">🔄 مرة أخرى</button><button class="btn ghost" data-go="games">🎮 ألعاب أخرى</button></div>`;
-      play(praise());
+    const memoryDone = () => gameDone('memory', SK.memoryStars(moves, pairs), `${D(moves)} محاولة`);
+  }
+
+  // كرّر الترتيب (Simon): البطاقات بتنوّر بالترتيب وبصوت اسمها، والطفل يكرّر — بلا عدّاد وقت.
+  // بتبدأ بـ٢ وتزيد واحدة كل مرة؛ غلطة ← نعيد عرض نفس الترتيب، والغلطة التانية تنهي الجولة بنجومها.
+  function echoGame() {
+    const A = C.world.find((g) => g.id === 'animals').items, tiles = C.echo_tiles;
+    let seq = [], pos = 0, lock = true, best = 0, lives = 2, rounds = 0, alive = true;
+    stopCurrent = () => { alive = false; };
+    view.innerHTML = `<p class="center note">شاهِد الترتيب ثم كرّره 🧠</p>
+      <div class="echo">${tiles.map((a, k) => `<button class="etile" data-k="${k}" aria-label="${esc(A[a][1])}">${A[a][0]}</button>`).join('')}</div>
+      <p class="center note" id="echoLen"></p>`;
+    const btns = $$('.etile', view), wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const glow = (k, ms) => { btns[k].classList.add('lit'); play('wld/animals_' + tiles[k]); return wait(ms).then(() => btns[k].classList.remove('lit')); };
+    async function show() {
+      lock = true; pos = 0;
+      $('#echoLen').textContent = `👀 ${D(seq.length)}`;
+      await wait(700);
+      for (const k of seq) { if (!alive) return; await glow(k, 650); await wait(250); }
+      if (!alive) return;
+      $('#echoLen').textContent = '👆 دورك';
+      lock = false;
     }
+    const next = () => { seq = SK.echoExtend(seq, tiles.length, rnd); show(); };
+    btns.forEach((b) => (b.onclick = () => {
+      if (lock) return;
+      const k = +b.dataset.k;
+      glow(k, 220);
+      if (k === seq[pos]) {
+        if (++pos < seq.length) return;
+        best = Math.max(best, seq.length); rounds++; lock = true;
+        if (rounds >= 8 || seq.length >= 7) return setTimeout(done, 700);
+        play(praise(), next);
+      } else {
+        lock = true; b.classList.add('no'); setTimeout(() => b.classList.remove('no'), 500);
+        if (--lives <= 0) return setTimeout(done, 700);
+        play(['ui/again'], show);
+      }
+    }));
+    function done() {
+      if (alive) gameDone('echo', SK.echoStars(best), `أطول ترتيب تذكّرته: ${D(best)}`);
+    }
+    play('ui/echo', next);
   }
 
   function buildGame(lang) {
@@ -888,6 +1014,43 @@
     paint();
   }
 
+  // خطوط ما قبل الكتابة: يعيد استخدام تقييم التغطية/الدقة نفسه المستعمل في كتابة الحروف بالإصبع
+  function traceLinesGame() {
+    const paths = C.trace_paths;
+    let q = 0, total = 0;
+    function paint() {
+      if (q >= paths.length) return finish();
+      const TP = paths[q];
+      view.innerHTML = `<div class="progress"><i style="width:${(q / paths.length) * 100}%"></i></div>
+        <p class="center note">مرّر إصبعك فوق الخط المنقّط 👆</p>
+        <div class="card center"><div class="qword">${TP.emoji} ${esc(TP.name)}</div>
+          <div class="trace-wrap"><canvas id="trBg"></canvas><canvas id="trInk"></canvas></div>
+          <div class="result" id="trRes"></div></div>
+        <div class="nav"><button class="btn ghost" id="trClear">🔄 من جديد</button><button class="btn" id="trDone">✅ خلصت</button></div>`;
+      const strokePath = (ctx, W, color, width, dash) => {
+        ctx.beginPath();
+        if (TP.kind === 'circle') { const [cx, cy, r] = TP.points[0]; ctx.arc(cx * W, cy * W, r * W, 0, Math.PI * 2); }
+        else TP.points.forEach(([px, py], k) => {
+          const X = px * W, Y = py * W;
+          if (k === 0) ctx.moveTo(X, Y);
+          else if (TP.kind === 'curve' && k === 1) ctx.quadraticCurveTo(X, Y, TP.points[2][0] * W, TP.points[2][1] * W);
+          else if (!(TP.kind === 'curve' && k === 2)) ctx.lineTo(X, Y);
+        });
+        ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = width; ctx.strokeStyle = color;
+        ctx.setLineDash(dash || []);
+        ctx.stroke();
+      };
+      tracePad((ctx, W, mode) => (mode === 'solid' ? strokePath(ctx, W, '#000', W * 0.11) : strokePath(ctx, W, '#86bb9b', W * 0.045, [W / 45, W / 40])),
+        'pre' + TP.id, (stars) => { total += stars; setTimeout(() => { q++; paint(); }, 900); });
+      play('ui/trace_pre');
+    }
+    function finish() {
+      const stars = total >= paths.length * 2.5 ? 3 : total >= paths.length * 1.5 ? 2 : 1;
+      gameDone('trace', stars, `تتبّعتَ ${D(paths.length)} خطوط`, { addStars: false });   // نجومها اتدّت أول بأول
+    }
+    paint();
+  }
+
   /* ───────────── الملصقات ───────────── */
   routes.stickers = () => {
     setTitle('ملصقاتي');
@@ -917,6 +1080,25 @@
     }));
   }
   routes.parents = () => { setTitle('ركن الأهل'); gate(parentsPanel); };
+  // نشاط بلا شاشة لكل مجال — التطبيق يكمّل البيت مش بديل عنه
+  const OFFLINE = {
+    literacy: 'اختارا حرفاً اليوم وابحثا في البيت عن ٣ أشياء تبدأ به، وقولا أسماءها بصوت واضح.',
+    math: 'عُدّا معاً الملاعق والأطباق على السفرة، ثم اسأله: كم نحتاج لنُكمل عشرة؟',
+    thinking: 'العبا «كرّر الترتيب» بالتصفيق: صفّق مرتين ثم ثلاثاً، والطفل يكرّر بعدك ويزيد واحدة.',
+    world: 'في نزهة أو من كتاب مصوّر: اسأله أين يعيش كل حيوان تريانه، وبماذا يشعر كل شخص في الصورة.',
+  };
+  function insightsHtml(p) {
+    const ins = SK.parentInsights(p, gameAreas());
+    if (ins.empty) return '<p class="note">💡 بعد أول جولات لعب ستظهر هنا نصائح مناسبة لطفلك.</p>';
+    const names = (ids) => ids.map((id) => `${GAMES[id].emoji} ${esc(GAMES[id].title)}`).join(' · ');
+    const rows = [];
+    if (ins.strong.length) rows.push(`<li>✅ <b>يُتقن:</b> ${names(ins.strong)}</li>`);
+    if (ins.weakGames.length) rows.push(`<li>🔁 <b>يحتاج تمريناً:</b> ${names(ins.weakGames)}</li>`);
+    if (ins.weakLetters.length) rows.push(`<li>🔤 <b>حروف راجِعاها معاً:</b> <span class="letters">${ins.weakLetters.map((i) => C.ar_letters[i].letter).join(' ')}</span></li>`);
+    if (ins.tryNext) rows.push(`<li>🎯 <b>جرّبا:</b> ${names([ins.tryNext])} — ${AREAS[ins.focus]}</li>`);
+    if (ins.focus) rows.push(`<li>🏠 <b>بلا شاشة:</b> ${OFFLINE[ins.focus]}</li>`);
+    return `<div class="insights"><b>💡 ماذا نفعل هذا الأسبوع؟</b><ul>${rows.join('')}</ul></div>`;
+  }
   function parentsPanel() {
     const day = SK.dateKey(new Date()), used = Math.round(((S.usage || {})[day] || 0) / 60);
     const counts = { ar: 28, en: 26, num: 20, surahs: surahOrder().length, stories: C.stories.length, gameAreas: gameAreas() };
@@ -936,6 +1118,7 @@
           ${bar('الأرقام ١–٢٠', s.pct.num, `${D(s.num)}/${D(20)}`)}${bar('السور المحفوظة', s.pct.surahs, `${D(s.surahs)}/${D(counts.surahs)}`)}
           ${bar('القصص', s.pct.stories, `${D(s.stories)}/${D(counts.stories)}`)}
           <p class="note">جولات الألعاب: ${Object.entries(AREAS).map(([a, t]) => `${t} ${D(s.areaPlays[a] || 0)}`).join(' · ')}</p>
+          ${insightsHtml(p)}
           <p class="note">«متقَن» = ٣ إجابات صحيحة متتالية من أول مرة. الحرف الذي يخطئ فيه الطفل يعود له أكثر تلقائياً.</p></div>`;
       }).join('')}
       <div class="card"><h3>⏰ وقت الشاشة</h3>
@@ -948,7 +1131,7 @@
         <div class="form-row"><label>القارئ</label><select class="txt" id="rec">${Q.reciters.map((r) => `<option value="${r.id}" ${S.settings.reciter === r.id ? 'selected' : ''}>${esc(r.name)} — ${esc(r.note)}</option>`).join('')}</select></div>
         <div class="form-row"><button class="btn ghost" id="reset">🗑️ تصفير تقدّم ${esc(kid().name || 'الطفل الحالي')}</button></div></div>
       <div class="card"><h3>📚 منهجنا</h3>
-        <p class="note">القراءة: القاعدة النورانية (الحرف ← الحركة ← المقطع ← الكلمة) والحروف المتشابهة معاً وشكل الحرف في أول الكلمة ووسطها وآخرها والوعي الصوتي بالقافية · الإنجليزي: Phonics · الأرقام: الإطار العشري وإدراك الكمية بلا عدّ ثم الجمع والطرح ضمن ١٠ بالصور · التفكير: التصنيف والأنماط والظل والحجم · أنا وعالمي: المشاعر وماذا أفعل حين أشعر بها، والأضداد، والمفاهيم المكانية، والحصيلة اللغوية بالعربي والإنجليزي · التعلّم التكيّفي: «رحلة اليوم» تُبنى لكل طفل من أضعف ما عنده.</p>
+        <p class="note">القراءة: القاعدة النورانية (الحرف ← الحركة ← المقطع ← الكلمة) والحروف المتشابهة معاً وشكل الحرف في أول الكلمة ووسطها وآخرها والوعي الصوتي بالقافية · الإنجليزي: Phonics · الأرقام: الإطار العشري وإدراك الكمية بلا عدّ ثم الجمع والطرح ضمن ١٠ بالصور وروابط العدد ١٠ وقراءة الساعة · التفكير: التصنيف والأنماط والظل والحجم والذاكرة العاملة («كرّر الترتيب») وخطوط ما قبل الكتابة · أنا وعالمي: المشاعر وماذا أفعل حين أشعر بها، والأضداد، والمفاهيم المكانية، وتسلسل اليوم، والحيوانات وبيئاتها، والحصيلة اللغوية بالعربي والإنجليزي · التعلّم التكيّفي: «رحلة اليوم» تُبنى لكل طفل من أضعف ما عنده.</p>
         <p class="note">القرآن: الرسم العثماني برواية حفص، والتلاوة بصوت قرّاء حقيقيين (EveryAyah). القصص بمواضعها من القرآن وتخريج أحاديثها، والحكاية التربوية مُعلَّمة بذلك.</p>
         <p class="note">🔐 بلا إعلانات ولا حسابات. كل التقدّم على هذا الجهاز فقط، ولا يُرسل شيء. الاتصال الخارجي الوحيد: تحميل التلاوة. <a href="privacy.html">الخصوصية</a></p></div>`;
     $$('[data-name]', view).forEach((i) => (i.onchange = () => { S.profiles.find((k) => k.id === i.dataset.name).name = i.value.trim().slice(0, 20); save(); }));
